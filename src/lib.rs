@@ -50,16 +50,17 @@ pub async fn run(args: Vec<OsString>) -> Result<(), AppError> {
     let mon_pool = setup::get_mon_db_pool().await?;  // pool for the monitoring db
     let src_pool = setup::get_src_db_pool().await?;  // pool for the source specific db
 
-    // Download type is constant - reading data from a set of csv files.
+    // Download type is constant - reading data by web scraping
     // First recreate the sd schema tables, get Id of this download,
     // then import the data into the sd tables
     // before updating the download record.
 
-    setup::create_tables::create_tables(&src_pool).await?;
-
-    let dl_id = get_next_download_id(&mon_pool).await?;
-    let res = download::process_files(&params.csv_data_path, &params.json_data_path, dl_id, &src_pool).await?;
-    update_dl_event_record (dl_id, 1, res, &mon_pool).await?;
+    download::setup_sd_tables(&src_pool).await?;
+        
+    let dl_id = get_next_download_id("All, scraped from Biolinnc web site", &mon_pool).await?;
+    let res = download::obtain_summary_data(&params.base_url, &src_pool).await?;
+    
+    update_dl_event_record (dl_id, res, &mon_pool).await?;
     
     Ok(())  
 }

@@ -43,13 +43,13 @@ pub fn config_file_exists()-> bool {
 fn parse_args(args: Vec<OsString>) -> Result<ArgMatches, clap::Error> {
 
     command!()
-        .about("Imports data from ROR json file (v2) and imports it into a database")
+        .about("Downloads and imports data from the Biolincc website")
         .arg(
-            Arg::new("i")
+            Arg::new("i_flag")
            .short('i')
            .long("import")
            .required(false)
-           .help("A flag signifying dasta to be imported from CSV files")
+           .help("A flag signifying data to be downloaded into the sd tables")
            .action(clap::ArgAction::SetTrue)
         )
         .arg(
@@ -82,9 +82,9 @@ mod tests {
     }  
 
     #[test]
-    fn check_cli_with_a_flag() {
+    fn check_cli_with_t_flag() {
         let target = "dummy target";
-        let args : Vec<&str> = vec![target, "-a"];
+        let args : Vec<&str> = vec![target, "-t"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();

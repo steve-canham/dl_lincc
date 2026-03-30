@@ -8,16 +8,20 @@ use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct TomlConfig {
+    pub data: Option<TomlDataPars>, 
     pub folders: Option<TomlFolderPars>, 
     pub database: Option<TomlDBPars>,
 }
 
+
+#[derive(Debug, Deserialize)]
+pub struct TomlDataPars {
+    pub base_url: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TomlFolderPars {
-    pub csv_data_path: Option<String>,
-    pub json_data_path: Option<String>,
     pub log_folder_path: Option<String>,
-
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,15 +34,18 @@ pub struct TomlDBPars {
     pub src_db_name: Option<String>,
 }
 
-
 pub struct Config {
+    pub data: DataPars,
     pub folders: FolderPars, 
     pub db_pars: DBPars,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DataPars {
+    pub base_url: String,
+}
+
 pub struct FolderPars {
-    pub csv_data_path: PathBuf,
-    pub json_data_path: PathBuf,
     pub log_folder_path: PathBuf,
 }
 
@@ -60,10 +67,10 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
         .map_err(|_| {AppError::ConfigurationError("Unable to parse config file.".to_string(),
                                        "File (app_config.toml) may be malformed.".to_string())})?;
 
-    let toml_database = match toml_config.database {
-        Some(d) => d,
+    let toml_data = match toml_config.data {
+        Some(t) => t,
         None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
-            "Cannot find a section called '[database]'.".to_string()))},
+           "Cannot find a section called '[data]'.".to_string()))},
     };
 
     let toml_folders = match toml_config.folders {
@@ -71,30 +78,42 @@ pub fn populate_config_vars(config_string: &String) -> Result<Config, AppError> 
         None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
            "Cannot find a section called '[folders]'.".to_string()))},
     };
-       
+
+        let toml_database = match toml_config.database {
+        Some(d) => d,
+        None => {return Result::Err(AppError::ConfigurationError("Missing or misspelt configuration section.".to_string(),
+            "Cannot find a section called '[database]'.".to_string()))},
+    };
+
+    let config_data = verify_data_parameters(toml_data)?;
     let config_folders = verify_folder_parameters(toml_folders)?;
     let config_db_pars = verify_db_parameters(toml_database)?;
 
     let _ = DB_PARS.set(config_db_pars.clone());
 
     Ok(Config{
+        data:config_data,
         folders: config_folders,
         db_pars: config_db_pars,
     })
 }
 
 
+fn verify_data_parameters(toml_data: TomlDataPars) -> Result<DataPars, AppError> {
+
+    let base_url_string = check_essential_string (toml_data.base_url, "biolincc base url", "base_url")?;
+
+    Ok(DataPars {
+        base_url: base_url_string,
+    })
+}
+
+
 fn verify_folder_parameters(toml_folders: TomlFolderPars) -> Result<FolderPars, AppError> {
-
-    let csv_data_path_string = check_defaulted_string (toml_folders.csv_data_path, "csv data path", "csv_data_path", "");
-
-    let json_data_path_string = check_essential_string (toml_folders.json_data_path, "json outputs parents folder", "json_data_path")?;
 
     let log_folder_path_string = check_essential_string (toml_folders.log_folder_path, "log folder", "log_folder_path")?;
 
     Ok(FolderPars {
-        csv_data_path: PathBuf::from(csv_data_path_string),
-        json_data_path: PathBuf::from(json_data_path_string),
         log_folder_path: PathBuf::from(log_folder_path_string),
     })
 }
@@ -208,10 +227,11 @@ mod tests {
 
         let config = r#"
 
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
@@ -219,78 +239,23 @@ db_user="user_name"
 db_password="password"
 db_port="5432"
 mon_db_name="mon"
-src_db_name="anz"
+src_db_name="biolincc"
 
 "#;
         let config_string = config.to_string();
         let res = populate_config_vars(&config_string).unwrap();
 
-        assert_eq!(res.folders.csv_data_path, PathBuf::from("/home/steve/Data/MDR source data/ANZCTR"));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
+        assert_eq!(res.data.base_url, "https://biolincc.nhlbi.nih.gov/studies/p=1");
+        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/biolincc"));
 
         assert_eq!(res.db_pars.db_host, "localhost");
         assert_eq!(res.db_pars.db_user, "user_name");
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5432);
         assert_eq!(res.db_pars.mon_db_name, "mon");
-        assert_eq!(res.db_pars.src_db_name, "anz");
+        assert_eq!(res.db_pars.src_db_name, "biolincc");
     }
     
-
-    #[test]
-    fn check_config_with_missing_csv_folder() {
-
-        let config = r#"
-[folders]
-csv_data_path=""
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
-
-[database]
-db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5432"
-mon_db_name="mon"
-src_db_name="anz"
-
-"#;
-        let config_string = config.to_string();
-        let res = populate_config_vars(&config_string).unwrap();
-
-        assert_eq!(res.folders.csv_data_path, PathBuf::from(""));
-        assert_eq!(res.folders.json_data_path, PathBuf::from("/home/steve/Data/MDR json files/anz"));
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/anz"));
-
-
-    }
-
-
-    #[test]
-    #[should_panic]
-    fn check_panics_if_missing_json_folder () {
-
-        let config = r#"
-
-[folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path=""
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
-
-[database]
-db_host="localhost"
-db_user="user_name"
-db_password="password"
-db_port="5432"
-mon_db_name="mon"
-src_db_name="anz"
-
-"#;
-        let config_string = config.to_string();
-        let _res = populate_config_vars(&config_string).unwrap();
-    }
-
 
     #[test]
     #[should_panic]
@@ -298,9 +263,10 @@ src_db_name="anz"
 
         let config = r#"
 
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
 log_folder_path=""
 
 [database]
@@ -309,7 +275,7 @@ db_user="user_name"
 db_password="password"
 db_port="5432"
 mon_db_name="mon"
-src_db_name="anz"
+src_db_name="biolincc"
 
 "#;
         let config_string = config.to_string();
@@ -317,6 +283,31 @@ src_db_name="anz"
     }
     
 
+
+    #[test]
+    #[should_panic]
+    fn check_panics_if_missing_base_url () {
+
+        let config = r#"
+
+[data]
+base_url=""
+
+[folders]
+log_folder_path="/home/steve/Data/MDR/MDR logs/biolincc"
+
+[database]
+db_host="localhost"
+db_user="user_name"
+db_password="password"
+db_port="5432"
+mon_db_name="mon"
+src_db_name="biolincc"
+
+"#;
+        let config_string = config.to_string();
+        let _res = populate_config_vars(&config_string).unwrap();
+    }
     
 
 

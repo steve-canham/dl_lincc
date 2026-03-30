@@ -1,3 +1,5 @@
+/* 
+
 use regex::Regex;
 
 pub trait StringExtensions {
@@ -321,7 +323,7 @@ impl DateExtensions for String {
 
 }
 
-
+*/
 
     /* 
     fn replace_nbr_spaces(&self) -> Option<String> {

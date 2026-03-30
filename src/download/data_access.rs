@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::{err::AppError, DownloadResult};
 use crate:: download::file_models::{WHOSummary, SecondaryId};
 
+/* 
 pub async fn update_who_study_mon(db_name: &String, sd_sid: &String, remote_url: &Option<String>, dl_id: i32,
                      record_date: &Option<NaiveDate>, full_path: &PathBuf, pool: &Pool<Postgres>) -> Result<bool, AppError> {
 
@@ -44,42 +45,46 @@ pub async fn update_who_study_mon(db_name: &String, sd_sid: &String, remote_url:
 
         Ok(added)
 }
+*/
 
+pub async fn update_dl_event_record (dl_id: i32, dl_res: DownloadResult, mon_pool: &Pool<Postgres>) ->  Result<bool, AppError> {
+     
+    let now = Utc::now();
+    let sql = r#"Update evs.dl_events set 
+             time_ended = $2,
+             num_records_checked = $3,
+             num_records_downloaded = $4,
+             num_records_added = $5,
+             filefolder_path = $6
+             where id = $1"#;
+    let res = sqlx::query(sql).bind(dl_id).bind(now)
+            .bind(dl_res.num_checked).bind(dl_res.num_downloaded).bind(dl_res.num_added)
+            .bind(data_path.display().to_string())
+            .execute(mon_pool)
+            .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?; 
+    Ok(res.rows_affected() == 1)
+}
 
-pub async fn get_next_download_id(pool: &Pool<Postgres>) -> Result<i32, AppError>{
+pub async fn get_next_download_id(dl_type: &str, mon_pool: &Pool<Postgres>) -> Result<i32, AppError>{
 
-    let sql = "select max(id) from evs.dl_events ";
-    let last_id: i32 = sqlx::query_scalar(sql).fetch_one(pool)
+    let sql = "select coalesce(max(id), 10001) from evs.dl_events ";
+    let last_id: i32 = sqlx::query_scalar(sql).fetch_one(mon_pool)
                       .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
     let new_id = last_id + 1;
     
     // Create the new record (to be updated later).
+
     let now = Utc::now();
-    let sql = "Insert into evs.dl_events(id, source_id, time_started) values ($1, $2, $3)";
-    sqlx::query(sql).bind(new_id).bind(100115).bind(now).execute(pool)
-             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
+    let sql = "Insert into evs.dl_events(id, source_id, dl_type, time_started) values ($1, $2, $3, $4)";
+    sqlx::query(sql).bind(new_id).bind(100116).bind(dl_type.to_string()).bind(now)
+            .execute(mon_pool)
+            .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?;
 
     Ok(new_id)
 }
 
 
-pub async fn update_dl_event_record (dl_id: i32, type_id: i32, dl_res: DownloadResult, pool: &Pool<Postgres>) ->  Result<bool, AppError> {
-     
-    let now = Utc::now();
-    let sql = r#"Update evs.dl_events set 
-             num_records_checked = $1,
-             num_records_downloaded = $2,
-             num_records_added = $3,
-             time_ended = $4,
-             type_id = $5
-             where id = $6"#;
-    let res = sqlx::query(sql).bind(dl_res.num_checked).bind(dl_res.num_downloaded).bind(dl_res.num_added)
-          .bind(now).bind(type_id).bind(dl_id).execute(pool)
-             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?; 
-    Ok(res.rows_affected() == 1)
-}
-
-
+/*
 pub async fn add_new_single_file_record(dl_id: i32, file_path: &PathBuf, file_res: &DownloadResult, pool: &Pool<Postgres>) -> Result<bool, AppError> {
 
     let source_path = file_path.to_str().unwrap().replace("\\\\", "/").replace("\\", "/");     // assumes utf-8 characters
@@ -246,46 +251,5 @@ fn split_secids (ids: Option<Vec<SecondaryId>>) -> (Option<Vec<String>>, Option<
 
 }
 
+ */
 
-
-
-/*
-
-pub fn is_who_test_study() -> bool {
-
-    public bool IsWHOTestStudy(string dbname, string sd_sid)
-    {
-        string whoConnString = _credentials.GetConnectionString(dbname);
-        using NpgsqlConnection conn = new(whoConnString);
-        string sql_string = @$"select for_testing
-                    from mn.source_data where sd_sid = '{sd_sid}';";
-        bool? res = conn.QueryFirstOrDefault<bool?>(sql_string);
-        return res == true;
-    }
-    false
-}
-
-public bool WriteFile(string sid, string jsonString, string folder_path)
-{
-    try
-    {
-        // Write out study record as json.
-
-        string full_path = Path.Combine(folder_path, sid + ".json");
-        File.WriteAllText(full_path, jsonString);
-
-        if (IsTestStudy(sid))
-        {
-            // write out copy of the file in the test folder
-
-            string test_path = _logging_helper.TestFilePath;
-            string full_test_path = Path.Combine(test_path, sid + ".json");
-            File.WriteAllText(full_test_path, jsonString);
-        }
-        return true;
-    }
-
-}
-
-
-*/

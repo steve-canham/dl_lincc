@@ -29,10 +29,10 @@ pub fn setup_log (data_folder: &PathBuf) -> Result<log4rs::Handle, AppError> {
 fn get_log_file_path(data_folder: &PathBuf) -> PathBuf {
     
     let datetime_string = Local::now().format("%m-%d %H%M%S").to_string();
-    let log_file_name = format!("ANZCTR DL {} ", datetime_string);
+    let log_file_name = format!("BioLinnc DL {} ", datetime_string);
     [data_folder, &PathBuf::from(&log_file_name)].iter().collect()
-    
 }
+
 
 fn config_log (log_file_path: &PathBuf) -> Result<log4rs::Handle, AppError> {
     
@@ -79,8 +79,7 @@ pub fn log_startup_params (ip : &InitParams) {
     info!("");
     info!("************************************");
     info!("");
-    info!("csv data path: {:?}", ip.csv_data_path);
-    info!("json data parth: {:?}", ip.json_data_path);
+    info!("base_url: {:?}", ip.base_url);
     info!("log folder path: {:?}", ip.log_folder_path);
 
     info!("");
