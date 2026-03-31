@@ -1,51 +1,6 @@
 use sqlx::{Pool, Postgres};
-use std::path::PathBuf;
-use chrono::{NaiveDate, Utc};
-use std::collections::HashMap;
+use chrono::Utc;
 use crate::{err::AppError, DownloadResult};
-use crate:: download::file_models::{WHOSummary, SecondaryId};
-
-/* 
-pub async fn update_who_study_mon(db_name: &String, sd_sid: &String, remote_url: &Option<String>, dl_id: i32,
-                     record_date: &Option<NaiveDate>, full_path: &PathBuf, pool: &Pool<Postgres>) -> Result<bool, AppError> {
-
-        let mut added = false;          // indicates if will be a new record or update of an existing one
-        let now = Utc::now();
-              
-        let local_path = full_path.to_str().unwrap().replace("\\\\", "/").replace("\\", "/");     // assumes utf-8 characters
-        let sql = format!("SELECT EXISTS(SELECT 1 from mon.{} where sd_sid = '{}')", db_name, sd_sid); 
-        let mon_record_exists = sqlx::query_scalar(&sql).fetch_one(pool).await
-                        .map_err(|e| AppError::SqlxError(e, sql))?;
-        if mon_record_exists {
-            
-            // Row already exists - update with new details.
-           
-            let sql = "Update mon.".to_string() + db_name + r#" set 
-                        remote_src_url = $1,
-                        last_who_revised = $2,
-                        local_path = $3,
-                        last_who_dl_id = $4,
-                        last_who_downloaded = $5
-                        where sd_sid = $6;"#;
-            sqlx::query(&sql).bind(remote_url).bind(record_date).bind(local_path) 
-                    .bind(dl_id).bind(now).bind(sd_sid).execute(pool).await
-                    .map_err(|e| AppError::SqlxError(e, sql))?;       
-        }
-        else {
-            
-            // Create as a new record.
-            
-            let sql = "Insert into mon.".to_string() + db_name + r#"(sd_sid, remote_src_url, last_who_revised,
-	                    local_path, last_who_dl_id, last_who_downloaded) values ($1, $2, $3, $4, $5, $6)"#;
-            sqlx::query(&sql).bind(sd_sid).bind(remote_url).bind(record_date)    
-            .bind(local_path).bind(dl_id).bind(now).execute(pool).await
-                    .map_err(|e| AppError::SqlxError(e, sql))?;     
-            added = true;  
-        }
-
-        Ok(added)
-}
-*/
 
 pub async fn update_dl_event_record (dl_id: i32, dl_res: DownloadResult, mon_pool: &Pool<Postgres>) ->  Result<bool, AppError> {
      
@@ -54,12 +9,10 @@ pub async fn update_dl_event_record (dl_id: i32, dl_res: DownloadResult, mon_poo
              time_ended = $2,
              num_records_checked = $3,
              num_records_downloaded = $4,
-             num_records_added = $5,
-             filefolder_path = $6
+             num_records_added = $5
              where id = $1"#;
     let res = sqlx::query(sql).bind(dl_id).bind(now)
             .bind(dl_res.num_checked).bind(dl_res.num_downloaded).bind(dl_res.num_added)
-            .bind(data_path.display().to_string())
             .execute(mon_pool)
             .await.map_err(|e| AppError::SqlxError(e, sql.to_string()))?; 
     Ok(res.rows_affected() == 1)

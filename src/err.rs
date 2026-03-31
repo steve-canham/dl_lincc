@@ -30,6 +30,9 @@ pub enum AppError {
     #[error("Error when processing command line arguments: {0:?}")]
     ClapError(#[from] clap::Error),
 
+    #[error("Error when processing reqwest command: {0:?}")]
+    ReqError(#[from] reqwest::Error),
+
     #[error("JSON processing error: {0:?}")]
     SerdeError(#[from] serde_json::Error),
 
@@ -85,6 +88,8 @@ pub fn report_error(e: AppError) -> () {
         AppError::IoError(e) => print_simple_error (e.to_string(), "IO ERROR"),
 
         AppError::CsvError(e) => print_simple_error (e.to_string(), "CSV ERROR"),
+
+        AppError::ReqError(e) => print_simple_error (e.to_string(), "Reqwest ERROR"),
 
         AppError::ParseError(e) => print_simple_error (e.to_string(), "PARSE INT ERROR"),
     }

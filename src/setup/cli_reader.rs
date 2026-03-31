@@ -78,7 +78,6 @@ mod tests {
 
         assert_eq!(res.importing, true);
         assert_eq!(res.transforming, false);
-        
     }  
 
     #[test]
@@ -96,7 +95,7 @@ mod tests {
     #[test]
     fn check_cli_with_both_flags() {
         let target = "dummy target";
-        let args : Vec<&str> = vec![target, "-i", "-a"];
+        let args : Vec<&str> = vec![target, "-i", "-t"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
 
         let res = fetch_valid_arguments(test_args).unwrap();

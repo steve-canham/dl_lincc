@@ -133,7 +133,7 @@ fn verify_db_parameters(toml_database: TomlDBPars) -> Result<DBPars, AppError> {
     let db_port: usize = db_port_as_string.parse().unwrap_or_else(|_| 5432);
 
     let mon_db_name = check_defaulted_string (toml_database.mon_db_name, "Mon DB name", "mon", "mon");
-    let src_db_name = check_defaulted_string (toml_database.src_db_name, "Src DB name", "who", "who");
+    let src_db_name = check_defaulted_string (toml_database.src_db_name, "Src DB name", "biolincc", "biolincc");
 
     Ok(DBPars {
         db_host,
@@ -231,7 +231,7 @@ mod tests {
 base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
 
 [folders]
-log_folder_path="/home/steve/Data/MDR/MDR logs/biolincc"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
@@ -246,7 +246,7 @@ src_db_name="biolincc"
         let res = populate_config_vars(&config_string).unwrap();
 
         assert_eq!(res.data.base_url, "https://biolincc.nhlbi.nih.gov/studies/p=1");
-        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR/MDR_Logs/biolincc"));
+        assert_eq!(res.folders.log_folder_path, PathBuf::from("/home/steve/Data/MDR logs/biolincc"));
 
         assert_eq!(res.db_pars.db_host, "localhost");
         assert_eq!(res.db_pars.db_user, "user_name");
@@ -294,7 +294,7 @@ src_db_name="biolincc"
 base_url=""
 
 [folders]
-log_folder_path="/home/steve/Data/MDR/MDR logs/biolincc"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
@@ -317,17 +317,19 @@ src_db_name="biolincc"
 
         let config = r#"
 
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
+db_user=""
 db_password="password"
 db_port="5432"
 mon_db_name="mon"
-src_db_name="anz"
+src_db_name="biolincc"
 
 "#;
         let config_string = config.to_string();
@@ -340,10 +342,11 @@ src_db_name="anz"
 
         let config = r#"
 
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_user="user_name"
@@ -358,7 +361,7 @@ db_password="password"
         assert_eq!(res.db_pars.db_password, "password");
         assert_eq!(res.db_pars.db_port, 5432);
         assert_eq!(res.db_pars.mon_db_name, "mon");
-        assert_eq!(res.db_pars.src_db_name, "anz");
+        assert_eq!(res.db_pars.src_db_name, "biolincc");
     }
 
 
@@ -367,10 +370,11 @@ db_password="password"
 
         let config = r#"
 
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-csv_data_path="/home/steve/Data/MDR source data/ANZCTR"
-json_data_path="/home/steve/Data/MDR json files/anz"
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"

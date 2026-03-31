@@ -1,6 +1,8 @@
 
 pub mod setup;
 pub mod err;
+pub mod data_models;
+pub mod helpers;
 mod download;
 
 use download::data_access::{get_next_download_id, update_dl_event_record};

@@ -13,7 +13,7 @@ use std::time::Duration;
 use sqlx::ConnectOptions;
 use config_reader::Config;
 use cli_reader::CliPars;
-use std::ffi::OsStr;
+
 
 pub struct InitParams {
     pub base_url: String,
@@ -33,7 +33,7 @@ pub fn get_params(cli_pars: CliPars, config_string: &String) -> Result<InitParam
     if !folder_exists(&log_folder_path) {
         fs::create_dir_all(&log_folder_path)?;
     }
-    
+   
     Ok(InitParams {
         base_url: base_url,
         log_folder_path: log_folder_path,
@@ -133,16 +133,20 @@ mod tests {
     #[test]
     fn check_results_with_no_params() {
         let config = r#"
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
-db_user="pg_user"
-db_password="foo"
+db_user="user_name"
+db_password="password"
 db_port="5432"
 mon_db_name="mon"
-src_db_name="anz"
+src_db_name="biolincc"
+
         "#;
         let config_string = config.to_string();
         config_reader::populate_config_vars(&config_string).unwrap();
@@ -153,36 +157,42 @@ src_db_name="anz"
 
         let res = get_params(cli_pars, &config_string).unwrap();
         
-        assert_eq!(res.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
-        assert_eq!(res.json_data_path, PathBuf::from("E:/MDR source files"));
-        assert_eq!(res.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
+        assert_eq!(res.base_url, "https://biolincc.nhlbi.nih.gov/studies/p=1");
+        assert_eq!(res.log_folder_path, PathBuf::from("/home/steve/Data/MDR logs/biolincc"));
+        assert_eq!(res.importing, true);
+        assert_eq!(res.transforming, false);
+
     }
 
     #[test]
-    fn check_cli_vars_overwrite_config_values() {
+    fn check_with_all_parameters() {
         let config = r#"
+[data]
+base_url="https://biolincc.nhlbi.nih.gov/studies/p=1"
+
 [folders]
-log_folder_path="/home/steve/Data/MDR/MDR_Logs/anz"
+log_folder_path="/home/steve/Data/MDR logs/biolincc"
 
 [database]
 db_host="localhost"
-db_user="pg_user"
-db_password="foo"
+db_user="user_name"
+db_password="password"
 db_port="5432"
 mon_db_name="mon"
-src_db_name="anz"
+src_db_name="biolincc"
         "#;
         let config_string = config.to_string();
         config_reader::populate_config_vars(&config_string).unwrap();
 
-        let args : Vec<&str> = vec!["dummy target", "-t", "503", "-f", "dummy who file.csv"];
+        let args : Vec<&str> = vec!["dummy target", "-i", "-t"];
         let test_args = args.iter().map(|x| x.to_string().into()).collect::<Vec<OsString>>();
         let cli_pars = cli_reader::fetch_valid_arguments(test_args).unwrap();
 
         let res = get_params(cli_pars, &config_string).unwrap();
 
-        assert_eq!(res.csv_data_path, PathBuf::from("E:/MDR source data/WHO/data"));
-        assert_eq!(res.json_data_path, PathBuf::from("E:/MDR source files"));
-        assert_eq!(res.log_folder_path, PathBuf::from("E:/MDR/MDR Logs"));
+        assert_eq!(res.base_url, "https://biolincc.nhlbi.nih.gov/studies/p=1");
+        assert_eq!(res.log_folder_path, PathBuf::from("/home/steve/Data/MDR logs/biolincc"));
+        assert_eq!(res.importing, true);
+        assert_eq!(res.transforming, true);
     }
 }
